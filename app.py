@@ -9,11 +9,19 @@ from datetime import datetime
 ILAS_FILE_PATH = "app.py"
 st.set_page_config(page_title="CAMP", layout="centered")
 
-# ---------------- AUTH CONFIG (SHA-256 HASHES) ----------------
-# username: advisor
-# password: change_me
+# ---------------- AUTH CONFIG ----------------
 ADVISOR_USER_HASH = "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3"
 ADVISOR_PASS_HASH = "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3"
+
+# ---------------- GPA CONFIG ----------------
+GRADE_POINTS = {
+    "A": 5.0,
+    "B": 4.0,
+    "C": 3.0,
+    "D": 2.0,
+    "E": 1.0,
+    "F": 0.0,
+}
 
 # ---------------- HELPERS ----------------
 def sha256_hash(text: str) -> str:
@@ -38,7 +46,6 @@ def login_page():
             and sha256_hash(password) == ADVISOR_PASS_HASH
         ):
             st.session_state.logged_in = True
-            st.success("Login successful")
             st.rerun()
         else:
             st.error("Invalid credentials")
@@ -54,7 +61,6 @@ def fetch_ilas_file():
 
     r = requests.get(url, headers=github_headers())
     if r.status_code != 200:
-        st.error("Failed to fetch ILAS file")
         st.stop()
 
     data = r.json()
@@ -91,8 +97,8 @@ def push_ilas_file(updated_code, sha):
 
 # ---------------- DASHBOARD ----------------
 def camp_dashboard():
-    st.title("🛠️ Course Advisory & Management Platform (CAMP)")
-    st.caption("Secure course rep credential manager")
+    st.title("🛠️ CAMP Dashboard")
+    st.caption("Course Advisory & Management Platform")
 
     st.divider()
 
@@ -104,24 +110,80 @@ def camp_dashboard():
             st.error("All fields are required")
             return
 
-        with st.spinner("Updating ILAS credentials..."):
-            code, sha = fetch_ilas_file()
-            updated = update_rep_credentials(
-                code,
-                sha256_hash(rep_user),
-                sha256_hash(rep_pass)
-            )
-            ok = push_ilas_file(updated, sha)
+        code, sha = fetch_ilas_file()
+        updated = update_rep_credentials(
+            code,
+            sha256_hash(rep_user),
+            sha256_hash(rep_pass)
+        )
+        ok = push_ilas_file(updated, sha)
 
         if ok:
             st.success("✅ Course rep credentials updated")
-            st.caption(f"Updated at {datetime.utcnow().isoformat()} UTC")
         else:
             st.error("❌ Update failed")
 
+# ---------------- CGPA PAGE ----------------
+def cgpa_calculator():
+    st.title("📊 CGPA Calculator (FUTO)")
+
+    if "courses" not in st.session_state:
+        st.session_state.courses = []
+
+    with st.form("add_course"):
+        c1, c2, c3 = st.columns(3)
+        name = c1.text_input("Course Name")
+        units = c2.number_input("Units", min_value=1, max_value=6, step=1)
+        grade = c3.selectbox("Grade", list(GRADE_POINTS.keys()))
+
+        if st.form_submit_button("➕ Add Course"):
+            st.session_state.courses.append({
+                "name": name,
+                "units": units,
+                "grade": grade
+            })
+
     st.divider()
-    if st.button("Logout"):
-        logout()
+
+    total_units = 0
+    total_points = 0.0
+
+    if st.session_state.courses:
+        st.subheader("Entered Courses")
+
+        for c in st.session_state.courses:
+            gp = GRADE_POINTS[c["grade"]]
+            wp = gp * c["units"]
+            total_units += c["units"]
+            total_points += wp
+
+            st.write(
+                f"{c['name']} — {c['units']} units — {c['grade']} ({wp})"
+            )
+
+        st.divider()
+        st.write(f"**Total Units:** {total_units}")
+        st.write(f"**Total Weighted Points:** {total_points}")
+
+        if total_units < 15:
+            st.warning("Minimum of 15 units required")
+        elif total_units > 30:
+            st.error("Maximum of 30 units exceeded")
+        else:
+            gpa = round(total_points / total_units, 2)
+            st.success(f"🎓 GPA: {gpa}")
+
+    st.divider()
+    c1, c2 = st.columns(2)
+
+    if c1.button("♻️ Clear Grades Only"):
+        for c in st.session_state.courses:
+            c["grade"] = "A"
+        st.rerun()
+
+    if c2.button("🗑️ Clear All"):
+        st.session_state.courses = []
+        st.rerun()
 
 # ---------------- MAIN ----------------
 def main():
@@ -130,8 +192,20 @@ def main():
 
     if not st.session_state.logged_in:
         login_page()
-    else:
+        return
+
+    page = st.sidebar.radio(
+        "Navigation",
+        ["Dashboard", "CGPA Calculator"]
+    )
+
+    if st.sidebar.button("Logout"):
+        logout()
+
+    if page == "Dashboard":
         camp_dashboard()
+    else:
+        cgpa_calculator()
 
 if __name__ == "__main__":
     main()
