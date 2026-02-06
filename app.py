@@ -6,7 +6,7 @@ import re
 from datetime import datetime
 
 # ---------------- CONFIG ----------------
-ILAS_FILE_PATH = "IlASv5.1.py"  # path in repo
+ILAS_FILE_PATH = "app.py"  # path in repo
 st.set_page_config(page_title="CAMP", layout="centered")
 
 # ---------------- HELPERS ----------------
@@ -114,13 +114,8 @@ def camp_dashboard():
 
 # ---------------- MAIN ----------------
 def main():
-    if "advisor" not in st.session_state:
-        st.session_state.advisor = False
-
-    if not st.session_state.advisor:
-        advisor_login()
-    else:
-        camp_dashboard()
+    st.session_state.advisor = True
+    camp_dashboard()
 
 if __name__ == "__main__":
     main()
