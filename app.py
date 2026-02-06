@@ -130,6 +130,7 @@ def cgpa_calculator():
     if "courses" not in st.session_state:
         st.session_state.courses = []
 
+    # ---------- ADD COURSE ----------
     with st.form("add_course"):
         c1, c2, c3 = st.columns(3)
         name = c1.text_input("Course Name")
@@ -137,14 +138,27 @@ def cgpa_calculator():
         grade = c3.selectbox("Grade", list(GRADE_POINTS.keys()))
 
         if st.form_submit_button("➕ Add Course"):
-            st.session_state.courses.append({
-                "name": name,
-                "units": units,
-                "grade": grade
-            })
+            if not name.strip():
+                st.error("Course name is required")
+            else:
+                key = name.strip().lower()
+
+                # Prevent duplicates (case-insensitive)
+                if any(c["key"] == key for c in st.session_state.courses):
+                    st.warning("This course has already been added")
+                else:
+                    st.session_state.courses.append({
+                        "sn": len(st.session_state.courses) + 1,
+                        "name": name.strip(),
+                        "key": key,
+                        "units": units,
+                        "grade": grade
+                    })
+                    st.rerun()
 
     st.divider()
 
+    # ---------- DISPLAY + CALC ----------
     total_units = 0
     total_points = 0.0
 
@@ -158,7 +172,9 @@ def cgpa_calculator():
             total_points += wp
 
             st.write(
-                f"{c['name']} — {c['units']} units — {c['grade']} ({wp})"
+                f"**{c['sn']}**. {c['name']} — "
+                f"{c['units']} units — "
+                f"Grade: {c['grade']} → {wp}"
             )
 
         st.divider()
@@ -173,15 +189,30 @@ def cgpa_calculator():
             gpa = round(total_points / total_units, 2)
             st.success(f"🎓 GPA: {gpa}")
 
+    else:
+        st.info("No courses added yet")
+
     st.divider()
-    c1, c2 = st.columns(2)
 
-    if c1.button("♻️ Clear Grades Only"):
-        for c in st.session_state.courses:
-            c["grade"] = "A"
-        st.rerun()
+    # ---------- EDIT GRADE BY S/N ----------
+    if st.session_state.courses:
+        st.subheader("✏️ Edit Grade by S/N")
 
-    if c2.button("🗑️ Clear All"):
+        sn_list = [c["sn"] for c in st.session_state.courses]
+        sn = st.selectbox("Select Course S/N", sn_list)
+        new_grade = st.selectbox("New Grade", list(GRADE_POINTS.keys()))
+
+        if st.button("Update Grade"):
+            for c in st.session_state.courses:
+                if c["sn"] == sn:
+                    c["grade"] = new_grade
+                    st.success(f"Grade updated for course {sn}")
+                    st.rerun()
+
+    st.divider()
+
+    # ---------- CLEAR ALL ----------
+    if st.button("🗑️ Clear All"):
         st.session_state.courses = []
         st.rerun()
 
