@@ -6,8 +6,14 @@ import re
 from datetime import datetime
 
 # ---------------- CONFIG ----------------
-ILAS_FILE_PATH = "app.py"  # path in repo
+ILAS_FILE_PATH = "app.py"
 st.set_page_config(page_title="CAMP", layout="centered")
+
+# ---------------- AUTH CONFIG (SHA-256 HASHES) ----------------
+# username: advisor
+# password: change_me
+ADVISOR_USER_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918"
+ADVISOR_PASS_HASH = "c07a3de039fbc0914689549f041eae295d621de7f7f647fd863f6d2f8db2080e"
 
 # ---------------- HELPERS ----------------
 def sha256_hash(text: str) -> str:
@@ -20,21 +26,26 @@ def github_headers():
     }
 
 # ---------------- AUTH ----------------
-def advisor_login():
+def login_page():
     st.title("🎓 CAMP Advisor Login")
 
-    u = st.text_input("Advisor Username")
-    p = st.text_input("Advisor Password", type="password")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
 
     if st.button("Login"):
         if (
-            sha256_hash(u) == st.secrets["ADVISOR_USER_HASH"]
-            and sha256_hash(p) == st.secrets["ADVISOR_PASS_HASH"]
+            sha256_hash(username) == ADVISOR_USER_HASH
+            and sha256_hash(password) == ADVISOR_PASS_HASH
         ):
-            st.session_state.advisor = True
+            st.session_state.logged_in = True
+            st.success("Login successful")
             st.rerun()
         else:
-            st.error("Invalid advisor credentials")
+            st.error("Invalid credentials")
+
+def logout():
+    st.session_state.clear()
+    st.rerun()
 
 # ---------------- GITHUB OPS ----------------
 def fetch_ilas_file():
@@ -43,6 +54,7 @@ def fetch_ilas_file():
 
     r = requests.get(url, headers=github_headers())
     if r.status_code != 200:
+        st.error("Failed to fetch ILAS file")
         st.stop()
 
     data = r.json()
@@ -80,7 +92,7 @@ def push_ilas_file(updated_code, sha):
 # ---------------- DASHBOARD ----------------
 def camp_dashboard():
     st.title("🛠️ Course Advisory & Management Platform (CAMP)")
-    st.caption("Manage course rep credentials securely")
+    st.caption("Secure course rep credential manager")
 
     st.divider()
 
@@ -102,20 +114,24 @@ def camp_dashboard():
             ok = push_ilas_file(updated, sha)
 
         if ok:
-            st.success("✅ Course rep credentials updated successfully")
+            st.success("✅ Course rep credentials updated")
             st.caption(f"Updated at {datetime.utcnow().isoformat()} UTC")
         else:
             st.error("❌ Update failed")
 
     st.divider()
     if st.button("Logout"):
-        st.session_state.clear()
-        st.rerun()
+        logout()
 
 # ---------------- MAIN ----------------
 def main():
-    st.session_state.advisor = True
-    camp_dashboard()
+    if "logged_in" not in st.session_state:
+        st.session_state.logged_in = False
+
+    if not st.session_state.logged_in:
+        login_page()
+    else:
+        camp_dashboard()
 
 if __name__ == "__main__":
     main()
