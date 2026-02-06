@@ -12,8 +12,8 @@ st.set_page_config(page_title="CAMP", layout="centered")
 # ---------------- AUTH CONFIG (SHA-256 HASHES) ----------------
 # username: advisor
 # password: change_me
-ADVISOR_USER_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918"
-ADVISOR_PASS_HASH = "c07a3de039fbc0914689549f041eae295d621de7f7f647fd863f6d2f8db2080e"
+ADVISOR_USER_HASH = "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3"
+ADVISOR_PASS_HASH = "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3"
 
 # ---------------- HELPERS ----------------
 def sha256_hash(text: str) -> str:
